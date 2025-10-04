@@ -1,0 +1,23 @@
+# Бинарные файлы и исполняемые файлы Go
+/bin/
+/data_catalog.exe
+/data_catalog
+
+go.sum
+
+.env
+.env.local
+.env.*.local
+config/local.yaml
+config/prod.yaml
+
+*.log
+logs/
+tmp/
+
+*.dump
+*.backup
+*.sql.bak
+/pg_dumps/
+
+/docs/site/
