@@ -23,6 +23,11 @@ func main() {
 	artifactHandler := handlers.NewArtifactHandler(artifactRepo)
 	
 	r := gin.Default()
+
+	r.Use(func(c *gin.Context) {
+        c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+        c.Next()
+    })
 	
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK"})
@@ -30,8 +35,8 @@ func main() {
 	
 	artifacts := r.Group("/artifacts")
 	{
-		artifacts.GET("/", artifactHandler.GetArtifacts)
-		artifacts.POST("/", artifactHandler.CreateArtifact)
+		artifacts.GET("", artifactHandler.GetArtifacts)
+		artifacts.POST("", artifactHandler.CreateArtifact)
 	}
 	
 	log.Println("Server starting on :" + cfg.ServerPort)

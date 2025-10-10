@@ -13,7 +13,7 @@ type DB struct {
 
 func NewDB(cfg *config.Config) (*DB, error) {
 	connString := fmt.Sprintf(
-		"postgresql://%s:%s@%s:%d/%s",
+		"postgresql://%s:%s@%s:%d/%s?sslmode=disable&client_encoding=utf8",
 		cfg.DBUser, cfg.DBPassword, cfg.DBHost, cfg.DBPort, cfg.DBName,
 	)
 	
