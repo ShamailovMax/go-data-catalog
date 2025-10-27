@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS artifacts (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE artifacts ADD CONSTRAINT artifacts_type_check   
+CHECK (type IN ('table', 'view', 'procedure', 'function', 'index', 'dataset', 'api', 'file'));
+
 -- Создание таблицы полей артефактов
 CREATE TABLE IF NOT EXISTS artifact_fields (
     id SERIAL PRIMARY KEY,
