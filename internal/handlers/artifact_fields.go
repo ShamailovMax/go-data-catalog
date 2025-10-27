@@ -1,0 +1,123 @@
+package handlers
+
+import (
+	"net/http"
+	"strconv"
+	"go-data-catalog/internal/models"
+	"go-data-catalog/internal/repository/postgres"
+
+	"github.com/gin-gonic/gin"
+)
+
+type ArtifactFieldHandler struct {
+	repo         *postgres.ArtifactFieldRepository
+	artifactRepo *postgres.ArtifactRepository
+}
+
+func NewArtifactFieldHandler(repo *postgres.ArtifactFieldRepository, artifactRepo *postgres.ArtifactRepository) *ArtifactFieldHandler {
+	return &ArtifactFieldHandler{repo: repo, artifactRepo: artifactRepo}
+}
+
+// List fields for specific artifact
+func (h *ArtifactFieldHandler) GetFieldsByArtifact(c *gin.Context) {
+	artifactIDParam := c.Param("id")
+	artifactID, err := strconv.Atoi(artifactIDParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid artifact_id"})
+		return
+	}
+
+	fields, err := h.repo.GetFieldsByArtifactID(c.Request.Context(), artifactID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, fields)
+}
+
+// Create field under artifact
+func (h *ArtifactFieldHandler) CreateField(c *gin.Context) {
+	artifactIDParam := c.Param("id")
+	artifactID, err := strconv.Atoi(artifactIDParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid artifact_id"})
+		return
+	}
+
+	// Проверяем, что артефакт существует
+	exists, err := h.artifactRepo.Exists(c.Request.Context(), artifactID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
+		return
+	}
+
+	var f models.ArtifactField
+	if err := c.BindJSON(&f); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+	// Принудительно используем artifact_id из пути
+	f.ArtifactID = artifactID
+
+	if err := h.repo.CreateField(c.Request.Context(), &f); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, f)
+}
+
+func (h *ArtifactFieldHandler) GetFieldByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	f, err := h.repo.GetFieldByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Field not found"})
+		return
+	}
+	c.JSON(http.StatusOK, f)
+}
+
+func (h *ArtifactFieldHandler) UpdateField(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	var f models.ArtifactField
+	if err := c.BindJSON(&f); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+
+	if err := h.repo.UpdateField(c.Request.Context(), id, &f); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, f)
+}
+
+func (h *ArtifactFieldHandler) DeleteField(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	if err := h.repo.DeleteField(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Field deleted successfully"})
+}

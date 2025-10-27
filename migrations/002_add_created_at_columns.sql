@@ -1,0 +1,9 @@
+-- Add created_at columns if they are missing (to match application queries)
+ALTER TABLE IF EXISTS contacts
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE IF EXISTS artifacts
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE IF EXISTS artifact_fields
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;

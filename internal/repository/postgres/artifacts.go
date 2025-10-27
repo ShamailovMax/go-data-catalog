@@ -122,3 +122,10 @@ func (r *ArtifactRepository) DeleteArtifact(ctx context.Context, id int) error {
 	_, err := r.db.Pool.Exec(ctx, query, id)
 	return err
 }
+
+// Exists проверяет, существует ли артефакт
+func (r *ArtifactRepository) Exists(ctx context.Context, id int) (bool, error) {
+	var exists bool
+	err := r.db.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM artifacts WHERE id = $1)`, id).Scan(&exists)
+	return exists, err
+}

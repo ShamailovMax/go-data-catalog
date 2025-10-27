@@ -23,10 +23,12 @@ func main() {
 	// Инициализация репозиториев
 	artifactRepo := postgres.NewArtifactRepository(db)
 	contactRepo := postgres.NewContactRepository(db)
+	artifactFieldRepo := postgres.NewArtifactFieldRepository(db)
 	
 	// Инициализация handlers
 	artifactHandler := handlers.NewArtifactHandler(artifactRepo)
 	contactHandler := handlers.NewContactHandler(contactRepo)
+	artifactFieldHandler := handlers.NewArtifactFieldHandler(artifactFieldRepo, artifactRepo)
 	
 	// Настройка роутера
 	r := gin.New() // Используем New вместо Default чтобы сами настроить middleware
@@ -59,6 +61,12 @@ func main() {
 			artifacts.POST("", artifactHandler.CreateArtifact)
 			artifacts.PUT("/:id", artifactHandler.UpdateArtifact)
 			artifacts.DELETE("/:id", artifactHandler.DeleteArtifact)
+			// Поля артефактов (вложенные маршруты)
+			artifactFields := artifacts.Group("/:id/fields")
+			{
+				artifactFields.GET("", artifactFieldHandler.GetFieldsByArtifact)
+				artifactFields.POST("", artifactFieldHandler.CreateField)
+			}
 		}
 		
 		// Контакты
@@ -69,6 +77,13 @@ func main() {
 			contacts.POST("", contactHandler.CreateContact)
 			contacts.PUT("/:id", contactHandler.UpdateContact)
 			contacts.DELETE("/:id", contactHandler.DeleteContact)
+		}
+		// Отдельные маршруты для работы с полями по id
+		fields := v1.Group("/fields")
+		{
+			fields.GET("/:id", artifactFieldHandler.GetFieldByID)
+			fields.PUT("/:id", artifactFieldHandler.UpdateField)
+			fields.DELETE("/:id", artifactFieldHandler.DeleteField)
 		}
 	}
 	

@@ -21,7 +21,7 @@ type Artifact struct {
 
 type ArtifactField struct {
     ID          int       `json:"id"`
-    ArtifactID  int       `json:"artifact_id" binding:"required,min=1"`
+    ArtifactID  int       `json:"artifact_id"`
     FieldName   string    `json:"field_name" binding:"required,min=1,max=255"`
     DataType    string    `json:"data_type" binding:"required,min=1,max=100"`
     Description string    `json:"description" binding:"omitempty,max=1000"`
