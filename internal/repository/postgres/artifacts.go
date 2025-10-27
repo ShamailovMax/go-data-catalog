@@ -63,3 +63,62 @@ func (r *ArtifactRepository) CreateArtifact(ctx context.Context, artifact *model
 	
 	return err
 }
+
+func (r *ArtifactRepository) GetArtifactByID(ctx context.Context, id int) (*models.Artifact, error) {
+	query := `
+		SELECT id, name, type, description, project_name, developer_id, created_at
+		FROM artifacts
+		WHERE id = $1
+	`
+	
+	var artifact models.Artifact
+	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
+		&artifact.ID,
+		&artifact.Name,
+		&artifact.Type,
+		&artifact.Description,
+		&artifact.ProjectName,
+		&artifact.DeveloperID,
+		&artifact.CreatedAt,
+	)
+	
+	if err != nil {
+		return nil, err
+	}
+	
+	return &artifact, nil
+}
+
+func (r *ArtifactRepository) UpdateArtifact(ctx context.Context, id int, artifact *models.Artifact) error {
+	query := `
+		UPDATE artifacts 
+		SET name = $2, type = $3, description = $4, project_name = $5, developer_id = $6
+		WHERE id = $1
+		RETURNING created_at
+	`
+	
+	err := r.db.Pool.QueryRow(
+		ctx,
+		query,
+		id,
+		artifact.Name,
+		artifact.Type,
+		artifact.Description,
+		artifact.ProjectName,
+		artifact.DeveloperID,
+	).Scan(&artifact.CreatedAt)
+	
+	if err != nil {
+		return err
+	}
+	
+	artifact.ID = id
+	return nil
+}
+
+func (r *ArtifactRepository) DeleteArtifact(ctx context.Context, id int) error {
+	query := `DELETE FROM artifacts WHERE id = $1`
+	
+	_, err := r.db.Pool.Exec(ctx, query, id)
+	return err
+}

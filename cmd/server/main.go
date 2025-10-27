@@ -4,6 +4,7 @@ import (
 	"log"
 	"go-data-catalog/internal/config"
 	"go-data-catalog/internal/handlers"
+	"go-data-catalog/internal/middleware"
 	"go-data-catalog/internal/repository/postgres"
 
 	"github.com/gin-gonic/gin"
@@ -12,31 +13,63 @@ import (
 func main() {
 	cfg := config.Load()
 	
+	// Инициализация БД
 	db, err := postgres.NewDB(cfg)
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
 	
+	// Инициализация репозиториев
 	artifactRepo := postgres.NewArtifactRepository(db)
+	contactRepo := postgres.NewContactRepository(db)
 	
+	// Инициализация handlers
 	artifactHandler := handlers.NewArtifactHandler(artifactRepo)
+	contactHandler := handlers.NewContactHandler(contactRepo)
 	
-	r := gin.Default()
-
+	// Настройка роутера
+	r := gin.New() // Используем New вместо Default чтобы сами настроить middleware
+	
+	// Добавляем наши middleware
+	r.Use(gin.Recovery()) // Восстановление после паники
+	r.Use(middleware.LoggerMiddleware())
+	r.Use(middleware.ErrorHandlerMiddleware())
+	r.Use(middleware.CORSMiddleware())
+	
+	// Глобальный middleware для установки Content-Type
 	r.Use(func(c *gin.Context) {
-        c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-        c.Next()
-    })
+		c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		c.Next()
+	})
 	
+	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK"})
 	})
 	
-	artifacts := r.Group("/artifacts")
+	// API v1 группа
+	v1 := r.Group("/api/v1")
 	{
-		artifacts.GET("", artifactHandler.GetArtifacts)
-		artifacts.POST("", artifactHandler.CreateArtifact)
+		// Артефакты
+		artifacts := v1.Group("/artifacts")
+		{
+			artifacts.GET("", artifactHandler.GetArtifacts)
+			artifacts.GET("/:id", artifactHandler.GetArtifactByID)
+			artifacts.POST("", artifactHandler.CreateArtifact)
+			artifacts.PUT("/:id", artifactHandler.UpdateArtifact)
+			artifacts.DELETE("/:id", artifactHandler.DeleteArtifact)
+		}
+		
+		// Контакты
+		contacts := v1.Group("/contacts")
+		{
+			contacts.GET("", contactHandler.GetContacts)
+			contacts.GET("/:id", contactHandler.GetContactByID)
+			contacts.POST("", contactHandler.CreateContact)
+			contacts.PUT("/:id", contactHandler.UpdateContact)
+			contacts.DELETE("/:id", contactHandler.DeleteContact)
+		}
 	}
 	
 	log.Println("Server starting on :" + cfg.ServerPort)

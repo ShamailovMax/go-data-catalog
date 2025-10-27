@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
 	"go-data-catalog/internal/models"
 	"go-data-catalog/internal/repository/postgres"
 
@@ -39,4 +40,59 @@ func (h *ArtifactHandler) CreateArtifact(c *gin.Context) {
 	}
 	
 	c.JSON(http.StatusCreated, artifact)
+}
+
+func (h *ArtifactHandler) GetArtifactByID(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+	
+	artifact, err := h.repo.GetArtifactByID(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
+		return
+	}
+	
+	c.JSON(http.StatusOK, artifact)
+}
+
+func (h *ArtifactHandler) UpdateArtifact(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+	
+	var artifact models.Artifact
+	if err := c.BindJSON(&artifact); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+	
+	if err := h.repo.UpdateArtifact(c.Request.Context(), id, &artifact); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	c.JSON(http.StatusOK, artifact)
+}
+
+func (h *ArtifactHandler) DeleteArtifact(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID format"})
+		return
+	}
+	
+	if err := h.repo.DeleteArtifact(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{"message": "Artifact deleted successfully"})
 }
