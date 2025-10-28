@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Go Data Catalog</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="screen">
+      <div class="card">
+        <h1>Go Data Catalog</h1>
+        <div id="auth-form">
+          <input type="email" id="email" placeholder="Email" required>
+          <input type="password" id="password" placeholder="Пароль" required>
+          <input type="text" id="name" placeholder="Имя (для регистрации)">
+          <div class="btn-group">
+            <button id="btn-login" class="btn">Войти</button>
+            <button id="btn-register" class="btn btn-secondary">Регистрация</button>
+          </div>
+          <div id="auth-error" class="error"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Screen -->
+    <div id="main-screen" class="screen hidden">
+      <header>
+        <h1>Data Catalog</h1>
+        <div class="user-info">
+          <span id="user-email"></span>
+          <button id="btn-logout" class="btn btn-small">Выход</button>
+        </div>
+      </header>
+
+      <!-- Teams Section -->
+      <section id="teams-section">
+        <h2>Мои команды</h2>
+        <div class="toolbar">
+          <input type="text" id="team-search" placeholder="Поиск команд...">
+          <button id="btn-search-teams" class="btn btn-small">Поиск</button>
+          <button id="btn-create-team" class="btn btn-small">+ Создать команду</button>
+        </div>
+        <div id="teams-list" class="list"></div>
+        <div id="search-results" class="list hidden"></div>
+      </section>
+
+      <!-- Team View -->
+      <section id="team-view" class="hidden">
+        <div class="back-btn" id="btn-back-to-teams">← Назад к командам</div>
+        <h2 id="team-name"></h2>
+        
+        <div class="tabs">
+          <button class="tab active" data-tab="artifacts">Артефакты</button>
+          <button class="tab" data-tab="contacts">Контакты</button>
+          <button class="tab" data-tab="requests">Заявки (owner/admin)</button>
+        </div>
+
+        <!-- Artifacts Tab -->
+        <div id="tab-artifacts" class="tab-content">
+          <div class="toolbar">
+            <button id="btn-create-artifact" class="btn btn-small">+ Создать артефакт</button>
+          </div>
+          <div id="artifacts-list" class="list"></div>
+        </div>
+
+        <!-- Contacts Tab -->
+        <div id="tab-contacts" class="tab-content hidden">
+          <div class="toolbar">
+            <button id="btn-create-contact" class="btn btn-small">+ Создать контакт</button>
+          </div>
+          <div id="contacts-list" class="list"></div>
+        </div>
+
+        <!-- Requests Tab -->
+        <div id="tab-requests" class="tab-content hidden">
+          <div id="requests-list" class="list"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -45,15 +45,15 @@ func main() {
 	r.Use(middleware.ErrorHandlerMiddleware())
 	r.Use(middleware.CORSMiddleware())
 	
-	// Глобальный middleware для установки Content-Type
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-		c.Next()
-	})
-	
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "OK"})
+	})
+
+	// Static files (frontend)
+	r.Static("/static", "./web/static")
+	r.GET("/", func(c *gin.Context) {
+		c.File("./web/static/index.html")
 	})
 	
 	// Public auth
