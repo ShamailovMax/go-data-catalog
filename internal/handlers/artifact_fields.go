@@ -18,12 +18,29 @@ func NewArtifactFieldHandler(repo *postgres.ArtifactFieldRepository, artifactRep
 	return &ArtifactFieldHandler{repo: repo, artifactRepo: artifactRepo}
 }
 
+func (h *ArtifactFieldHandler) teamID(c *gin.Context) (int, bool) {
+	teamIDParam := c.Param("teamId")
+	teamID, err := strconv.Atoi(teamIDParam)
+	if err != nil || teamID <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid team ID"})
+		return 0, false
+	}
+	return teamID, true
+}
+
 // List fields for specific artifact
 func (h *ArtifactFieldHandler) GetFieldsByArtifact(c *gin.Context) {
+	teamID, ok := h.teamID(c); if !ok { return }
 	artifactIDParam := c.Param("id")
 	artifactID, err := strconv.Atoi(artifactIDParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid artifact_id"})
+		return
+	}
+
+	// ensure artifact belongs to the team
+	if ok, _ := h.artifactExists(c, teamID, artifactID); !ok {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Artifact not found"})
 		return
 	}
 
@@ -37,6 +54,7 @@ func (h *ArtifactFieldHandler) GetFieldsByArtifact(c *gin.Context) {
 
 // Create field under artifact
 func (h *ArtifactFieldHandler) CreateField(c *gin.Context) {
+	teamID, ok := h.teamID(c); if !ok { return }
 	artifactIDParam := c.Param("id")
 	artifactID, err := strconv.Atoi(artifactIDParam)
 	if err != nil {
@@ -44,8 +62,8 @@ func (h *ArtifactFieldHandler) CreateField(c *gin.Context) {
 		return
 	}
 
-	// Проверяем, что артефакт существует
-	exists, err := h.artifactRepo.Exists(c.Request.Context(), artifactID)
+	// Проверяем, что артефакт существует в рамках команды
+	exists, err := h.artifactRepo.Exists(c.Request.Context(), teamID, artifactID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -120,4 +138,8 @@ func (h *ArtifactFieldHandler) DeleteField(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Field deleted successfully"})
+}
+
+func (h *ArtifactFieldHandler) artifactExists(c *gin.Context, teamID, artifactID int) (bool, error) {
+	return h.artifactRepo.Exists(c.Request.Context(), teamID, artifactID)
 }

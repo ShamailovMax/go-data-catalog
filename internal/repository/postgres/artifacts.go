@@ -13,13 +13,14 @@ func NewArtifactRepository(db *DB) *ArtifactRepository{
 	return &ArtifactRepository{db: db}
 }
 
-func (r *ArtifactRepository) GetAllArtifacts(ctx context.Context) ([]models.Artifact, error){
+func (r *ArtifactRepository) GetAllArtifacts(ctx context.Context, teamID int) ([]models.Artifact, error){
 	query := `
-		select id, name, type, description, project_name, developer_id, created_at
-		from artifacts
-		order by created_at desc
+		SELECT id, name, type, description, project_name, developer_id, team_id, created_at
+		FROM artifacts
+		WHERE team_id = $1
+		ORDER BY created_at DESC
 	`
-	rows, err := r.db.Pool.Query(ctx, query)
+	rows, err := r.db.Pool.Query(ctx, query, teamID)
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +35,7 @@ func (r *ArtifactRepository) GetAllArtifacts(ctx context.Context) ([]models.Arti
 			&artifact.Description,
 			&artifact.ProjectName,
 			&artifact.DeveloperID,
+			&artifact.TeamID,
 			&artifact.CreatedAt,
 		)
 		if err != nil {
@@ -44,11 +46,11 @@ func (r *ArtifactRepository) GetAllArtifacts(ctx context.Context) ([]models.Arti
 	return artifacts, nil
 }
 
-func (r *ArtifactRepository) CreateArtifact(ctx context.Context, artifact *models.Artifact) error {
+func (r *ArtifactRepository) CreateArtifact(ctx context.Context, teamID int, artifact *models.Artifact) error {
 	query := `
-		INSERT INTO artifacts (name, type, description, project_name, developer_id)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING id, created_at
+		INSERT INTO artifacts (name, type, description, project_name, developer_id, team_id)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, team_id, created_at
 	`
 
 	err := r.db.Pool.QueryRow(
@@ -59,26 +61,28 @@ func (r *ArtifactRepository) CreateArtifact(ctx context.Context, artifact *model
 		artifact.Description, 
 		artifact.ProjectName,
 		artifact.DeveloperID,
-	).Scan(&artifact.ID, &artifact.CreatedAt)
+		teamID,
+	).Scan(&artifact.ID, &artifact.TeamID, &artifact.CreatedAt)
 	
 	return err
 }
 
-func (r *ArtifactRepository) GetArtifactByID(ctx context.Context, id int) (*models.Artifact, error) {
+func (r *ArtifactRepository) GetArtifactByID(ctx context.Context, teamID, id int) (*models.Artifact, error) {
 	query := `
-		SELECT id, name, type, description, project_name, developer_id, created_at
+		SELECT id, name, type, description, project_name, developer_id, team_id, created_at
 		FROM artifacts
-		WHERE id = $1
+		WHERE id = $1 AND team_id = $2
 	`
 	
 	var artifact models.Artifact
-	err := r.db.Pool.QueryRow(ctx, query, id).Scan(
+	err := r.db.Pool.QueryRow(ctx, query, id, teamID).Scan(
 		&artifact.ID,
 		&artifact.Name,
 		&artifact.Type,
 		&artifact.Description,
 		&artifact.ProjectName,
 		&artifact.DeveloperID,
+		&artifact.TeamID,
 		&artifact.CreatedAt,
 	)
 	
@@ -89,24 +93,25 @@ func (r *ArtifactRepository) GetArtifactByID(ctx context.Context, id int) (*mode
 	return &artifact, nil
 }
 
-func (r *ArtifactRepository) UpdateArtifact(ctx context.Context, id int, artifact *models.Artifact) error {
+func (r *ArtifactRepository) UpdateArtifact(ctx context.Context, teamID, id int, artifact *models.Artifact) error {
 	query := `
 		UPDATE artifacts 
-		SET name = $2, type = $3, description = $4, project_name = $5, developer_id = $6
-		WHERE id = $1
-		RETURNING created_at
+		SET name = $3, type = $4, description = $5, project_name = $6, developer_id = $7
+		WHERE id = $1 AND team_id = $2
+		RETURNING team_id, created_at
 	`
 	
 	err := r.db.Pool.QueryRow(
 		ctx,
 		query,
 		id,
+		teamID,
 		artifact.Name,
 		artifact.Type,
 		artifact.Description,
 		artifact.ProjectName,
 		artifact.DeveloperID,
-	).Scan(&artifact.CreatedAt)
+	).Scan(&artifact.TeamID, &artifact.CreatedAt)
 	
 	if err != nil {
 		return err
@@ -116,16 +121,16 @@ func (r *ArtifactRepository) UpdateArtifact(ctx context.Context, id int, artifac
 	return nil
 }
 
-func (r *ArtifactRepository) DeleteArtifact(ctx context.Context, id int) error {
-	query := `DELETE FROM artifacts WHERE id = $1`
+func (r *ArtifactRepository) DeleteArtifact(ctx context.Context, teamID, id int) error {
+	query := `DELETE FROM artifacts WHERE id = $1 AND team_id = $2`
 	
-	_, err := r.db.Pool.Exec(ctx, query, id)
+	_, err := r.db.Pool.Exec(ctx, query, id, teamID)
 	return err
 }
 
 // Exists проверяет, существует ли артефакт
-func (r *ArtifactRepository) Exists(ctx context.Context, id int) (bool, error) {
+func (r *ArtifactRepository) Exists(ctx context.Context, teamID, id int) (bool, error) {
 	var exists bool
-	err := r.db.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM artifacts WHERE id = $1)`, id).Scan(&exists)
+	err := r.db.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM artifacts WHERE id = $1 AND team_id = $2)`, id, teamID).Scan(&exists)
 	return exists, err
 }

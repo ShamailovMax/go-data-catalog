@@ -50,6 +50,8 @@ DB_USER=your_user
 DB_PASSWORD=your_password
 DB_NAME=your_database
 SERVER_PORT=8080
+JWT_SECRET=changeme_super_secret
+TOKEN_TTL=60
 ```
 
 ### 5. Запустите сервер
@@ -65,19 +67,40 @@ go run cmd/server/main.go
 ### Health Check
 - `GET /health` - проверка состояния сервера
 
-### Артефакты
-- `GET /api/v1/artifacts` - получить все артефакты
-- `GET /api/v1/artifacts/:id` - получить артефакт по ID
-- `POST /api/v1/artifacts` - создать новый артефакт
-- `PUT /api/v1/artifacts/:id` - обновить артефакт
-- `DELETE /api/v1/artifacts/:id` - удалить артефакт
+### Аутентификация
+- `POST /api/v1/auth/register` — регистрация (email, password, name) → JWT токен
+- `POST /api/v1/auth/login` — логин → JWT токен
 
-### Контакты
-- `GET /api/v1/contacts` - получить все контакты
-- `GET /api/v1/contacts/:id` - получить контакт по ID
-- `POST /api/v1/contacts` - создать новый контакт
-- `PUT /api/v1/contacts/:id` - обновить контакт
-- `DELETE /api/v1/contacts/:id` - удалить контакт
+Все ниже — под Bearer JWT.
+
+### Команды (рабочие пространства)
+- `GET /api/v1/teams?search=<q>` — поиск команд
+- `POST /api/v1/teams` — создать команду (создатель становится owner)
+- `POST /api/v1/teams/:teamId/join` — запрос на вступление
+- `GET /api/v1/teams/:teamId/requests` — запросы на вступление (owner/admin)
+- `POST /api/v1/teams/:teamId/requests/:id/(approve|reject)` — решение по запросу (owner/admin)
+- `GET /api/v1/me/teams` — мои команды
+
+### Артефакты (в контексте команды)
+- `GET /api/v1/teams/:teamId/artifacts`
+- `GET /api/v1/teams/:teamId/artifacts/:id`
+- `POST /api/v1/teams/:teamId/artifacts`
+- `PUT /api/v1/teams/:teamId/artifacts/:id`
+- `DELETE /api/v1/teams/:teamId/artifacts/:id`
+
+Поля артефактов:
+- `GET /api/v1/teams/:teamId/artifacts/:id/fields`
+- `POST /api/v1/teams/:teamId/artifacts/:id/fields`
+- `GET /api/v1/teams/:teamId/fields/:id`
+- `PUT /api/v1/teams/:teamId/fields/:id`
+- `DELETE /api/v1/teams/:teamId/fields/:id`
+
+### Контакты (в контексте команды)
+- `GET /api/v1/teams/:teamId/contacts`
+- `GET /api/v1/teams/:teamId/contacts/:id`
+- `POST /api/v1/teams/:teamId/contacts`
+- `PUT /api/v1/teams/:teamId/contacts/:id`
+- `DELETE /api/v1/teams/:teamId/contacts/:id`
 
 ## Примеры запросов
 
@@ -167,4 +190,5 @@ go vet ./...
 - [ ] Добавить Swagger документацию
 - [ ] Написать тесты
 - [ ] Добавить Docker compose
-- [ ] Добавить аутентификацию
+- [x] Добавить аутентификацию
+- [x] Разграничение по командам (multi-tenant)

@@ -24,11 +24,17 @@ func main() {
 	artifactRepo := postgres.NewArtifactRepository(db)
 	contactRepo := postgres.NewContactRepository(db)
 	artifactFieldRepo := postgres.NewArtifactFieldRepository(db)
+	userRepo := postgres.NewUserRepository(db)
+	teamRepo := postgres.NewTeamRepository(db)
+	memberRepo := postgres.NewTeamMemberRepository(db)
+	joinReqRepo := postgres.NewJoinRequestRepository(db)
 	
 	// Инициализация handlers
 	artifactHandler := handlers.NewArtifactHandler(artifactRepo)
 	contactHandler := handlers.NewContactHandler(contactRepo)
 	artifactFieldHandler := handlers.NewArtifactFieldHandler(artifactFieldRepo, artifactRepo)
+	authHandler := handlers.NewAuthHandler(userRepo, cfg)
+	teamsHandler := handlers.NewTeamsHandler(teamRepo, memberRepo, joinReqRepo)
 	
 	// Настройка роутера
 	r := gin.New() // Используем New вместо Default чтобы сами настроить middleware
@@ -50,40 +56,68 @@ func main() {
 		c.JSON(200, gin.H{"status": "OK"})
 	})
 	
-	// API v1 группа
+	// Public auth
 	v1 := r.Group("/api/v1")
 	{
-		// Артефакты
-		artifacts := v1.Group("/artifacts")
+		v1.POST("/auth/register", authHandler.Register)
+		v1.POST("/auth/login", authHandler.Login)
+	}
+	
+	// Authenticated routes
+	v1auth := r.Group("/api/v1")
+	v1auth.Use(middleware.AuthMiddleware(cfg))
+	{
+		// teams discovery/creation
+		v1auth.GET("/teams", teamsHandler.Search)
+		v1auth.POST("/teams", teamsHandler.CreateTeam)
+		v1auth.POST("/teams/:teamId/join", teamsHandler.RequestJoin)
+		v1auth.GET("/me/teams", teamsHandler.MyTeams)
+
+		// team-scoped routes
+		team := v1auth.Group("/teams/:teamId")
+		team.Use(middleware.TeamMembershipMiddleware(memberRepo))
 		{
-			artifacts.GET("", artifactHandler.GetArtifacts)
-			artifacts.GET("/:id", artifactHandler.GetArtifactByID)
-			artifacts.POST("", artifactHandler.CreateArtifact)
-			artifacts.PUT("/:id", artifactHandler.UpdateArtifact)
-			artifacts.DELETE("/:id", artifactHandler.DeleteArtifact)
-			// Поля артефактов (вложенные маршруты)
-			artifactFields := artifacts.Group("/:id/fields")
+			// join request admin endpoints (owner/admin only)
+			admin := team.Group("")
+			admin.Use(middleware.RequireTeamRole("owner", "admin"))
 			{
-				artifactFields.GET("", artifactFieldHandler.GetFieldsByArtifact)
-				artifactFields.POST("", artifactFieldHandler.CreateField)
+				admin.GET("/requests", teamsHandler.ListRequests)
+				admin.POST("/requests/:id/:action", teamsHandler.DecideRequest) // action=approve|reject
 			}
-		}
-		
-		// Контакты
-		contacts := v1.Group("/contacts")
-		{
-			contacts.GET("", contactHandler.GetContacts)
-			contacts.GET("/:id", contactHandler.GetContactByID)
-			contacts.POST("", contactHandler.CreateContact)
-			contacts.PUT("/:id", contactHandler.UpdateContact)
-			contacts.DELETE("/:id", contactHandler.DeleteContact)
-		}
-		// Отдельные маршруты для работы с полями по id
-		fields := v1.Group("/fields")
-		{
-			fields.GET("/:id", artifactFieldHandler.GetFieldByID)
-			fields.PUT("/:id", artifactFieldHandler.UpdateField)
-			fields.DELETE("/:id", artifactFieldHandler.DeleteField)
+
+			// artifacts
+			artifacts := team.Group("/artifacts")
+			{
+				artifacts.GET("", artifactHandler.GetArtifacts)
+				artifacts.GET("/:id", artifactHandler.GetArtifactByID)
+				artifacts.POST("", artifactHandler.CreateArtifact)
+				artifacts.PUT("/:id", artifactHandler.UpdateArtifact)
+				artifacts.DELETE("/:id", artifactHandler.DeleteArtifact)
+				// artifact fields
+				artifactFields := artifacts.Group("/:id/fields")
+				{
+					artifactFields.GET("", artifactFieldHandler.GetFieldsByArtifact)
+					artifactFields.POST("", artifactFieldHandler.CreateField)
+				}
+			}
+
+			// contacts
+			contacts := team.Group("/contacts")
+			{
+				contacts.GET("", contactHandler.GetContacts)
+				contacts.GET("/:id", contactHandler.GetContactByID)
+				contacts.POST("", contactHandler.CreateContact)
+				contacts.PUT("/:id", contactHandler.UpdateContact)
+				contacts.DELETE("/:id", contactHandler.DeleteContact)
+			}
+
+			// fields by id
+			fields := team.Group("/fields")
+			{
+				fields.GET("/:id", artifactFieldHandler.GetFieldByID)
+				fields.PUT("/:id", artifactFieldHandler.UpdateField)
+				fields.DELETE("/:id", artifactFieldHandler.DeleteField)
+			}
 		}
 	}
 	

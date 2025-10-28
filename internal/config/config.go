@@ -16,6 +16,9 @@ type Config struct {
 	DBPassword string `env:"DB_PASSWORD,required"`
 	DBName     string `env:"DB_NAME,required"`
 	ServerPort string `env:"SERVER_PORT,required"`
+
+	JWTSecret  string `env:"JWT_SECRET,required"`
+	TokenTTL   int    `env:"TOKEN_TTL,required"` // minutes
 }
 
 func Load() *Config {
